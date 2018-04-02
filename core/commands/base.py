@@ -13,6 +13,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from ..lib.db import tcp_get_mysql_connection
+
 import logging
 
 log = logging.getLogger(__name__)
@@ -44,7 +46,7 @@ class CommandBase(object):
         MySQL instance, you can write/import one in cli.py and pass it here
         @type: function
         """
-        self.get_conn_func = get_conn_func
+        self.get_conn_func = tcp_get_mysql_connection
         self.init()
 
     def init(self):
