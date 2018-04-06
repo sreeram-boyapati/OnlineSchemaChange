@@ -13,6 +13,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from ..lib.db import tcp_get_mysql_connection
+
 import logging
 
 log = logging.getLogger(__name__)
@@ -44,7 +46,7 @@ class CommandBase(object):
         MySQL instance, you can write/import one in cli.py and pass it here
         @type: function
         """
-        self.get_conn_func = get_conn_func
+        self.get_conn_func = tcp_get_mysql_connection
         self.init()
 
     def init(self):
@@ -80,6 +82,10 @@ class CommandBase(object):
         parser.add_argument("--socket",
                             help="Socket file for the mysql "
                             "connection",
+                            required=False)
+        parser.add_argument("--host",
+                            help="Host of the mysql server"
+                            "tcp connection",
                             required=True)
         parser.add_argument("--database",
                             help="Database name(s) to run the schema change",
@@ -120,4 +126,8 @@ class CommandBase(object):
         self.parser.error(*args, **kwargs)
 
     def validate_args(self):
-        pass
+        """Assert for either socket connection or tcp connection
+        """
+        if self.args.host is None and self.args.socket is None:
+            raise ValueError('Pass host or socket connection, Both are not \
+                              specified')

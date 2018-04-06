@@ -51,44 +51,44 @@ def default_get_mysql_connection(
     return dbh
 
 
-class MySQLSocketConnection:
+def tcp_get_mysql_connection(
+        user_name, user_pass, host, dbname='',
+        timeout=60, connect_timeout=10, charset=None):
     """
-    A handy wrapper to connecting a MySQL server via a Unix domain socket.
+    Default method for connection to a MySQL instance.
+    You can override this behaviour by define/import in cli.py and pass it to
+    Payload at instantiation time.
+    The function should return a valid Connection object just as
+    MySQLdb.Connect does.
+    """
+    connection_config = {
+        'user': user_name,
+        'passwd': user_pass,
+        'host': host,
+        'db': dbname,
+        'use_unicode': True,
+        'connect_timeout': connect_timeout
+    }
+    if charset:
+        connection_config['charset'] = charset
+    dbh = MySQLdb.Connect(**connection_config)
+    dbh.autocommit(True)
+    if timeout:
+        cursor = dbh.cursor()
+        cursor.execute("SET SESSION WAIT_TIMEOUT = %s", (timeout,))
+    return dbh
+
+
+class MySQLBaseConnection(object):
+    """
+    A handy wrapper to connecting a MySQL server via a Unix domain socket
+    or TCP Socket.
     After a connection is established, you then can execute some basic
     operations by direct calling functions of this class.
     self.conn will contain the actual database handler.
     """
-
-    def __init__(self, user, password, socket, dbname='',
-                 connect_timeout=10, connect_function=None, charset=None):
-        self.user = user
-        self.password = password
-        self.db = dbname
-        self.conn = None
-        self.socket = socket
-        self.connect_timeout = connect_timeout
-        self.charset = charset
-        # Cache the connection id, if the connection_id property is called.
-        self._connection_id = None
-        if connect_function is not None:
-            self.connect_function = connect_function
-        else:
-            self.connect_function = default_get_mysql_connection
-        self.query_header = "/* {} */".format(
-            ":".join((sys.argv[0], os.path.basename(__file__))))
-
-    def connect(self):
-        """Establish a connection to a database.
-
-        If connections fail, then an exception shall likely be raised.
-
-        @return: True if the connection was successful and False if not.
-        @rtype: bool
-        @raise:
-        """
-        self.conn = self.connect_function(
-            self.user, self.password, self.socket, self.db,
-            connect_timeout=self.connect_timeout, charset=self.charset)
+    conn = None
+    query_header = None
 
     def disconnect(self):
         """Close an existing open connection to a MySQL server."""
@@ -171,3 +171,76 @@ class MySQLSocketConnection:
 
     def close(self):
         self.conn.close()
+
+    def set_query_header(self):
+        self.query_header = "/* {} */".format(
+            ":".join((sys.argv[0], os.path.basename(__file__))))
+
+
+class MySQLSocketConnection(MySQLBaseConnection):
+    """
+    A handy wrapper to connecting a MySQL server via a Unix domain socket.
+    """
+
+    def __init__(self, user, password, socket, dbname='',
+                 connect_timeout=10, connect_function=None, charset=None):
+        self.user = user
+        self.password = password
+        self.db = dbname
+        self.conn = None
+        self.socket = socket
+        self.connect_timeout = connect_timeout
+        self.charset = charset
+        # Cache the connection id, if the connection_id property is called.
+        self._connection_id = None
+        if connect_function is not None:
+            self.connect_function = connect_function
+        else:
+            self.connect_function = default_get_mysql_connection
+        self.set_query_header()
+
+    def connect(self):
+        """Establish a connection to a database.
+
+        If connections fail, then an exception shall likely be raised.
+
+        @return: True if the connection was successful and False if not.
+        @rtype: bool
+        @raise:
+        """
+        self.conn = self.connect_function(
+            self.user, self.password, self.socket, self.db,
+            connect_timeout=self.connect_timeout, charset=self.charset)
+
+
+class MySQLTCPConnection(MySQLBaseConnection):
+    """
+    A handy wrapper to connecting a MySQL server via a TCP domain socket.
+    """
+
+    def __init__(self, user, password, host, dbname='',
+                 connect_timeout=10, connect_function=None, charset=None):
+        self.user = user
+        self.password = password
+        self.db = dbname
+        self.conn = None
+        self.host = host
+        self.connect_timeout = connect_timeout
+        self.charset = charset
+        # Cache the connection id, if the connection_id property is called.
+        self._connection_id = None
+        self.connect_function = tcp_get_mysql_connection
+        self.set_query_header()
+
+    def connect(self):
+        """Establish a connection to a database.
+
+        If connections fail, then an exception shall likely be raised.
+
+        @return: True if the connection was successful and False if not.
+        @rtype: bool
+        @raise:
+        """
+        self.conn = self.connect_function(
+            self.user, self.password, self.host, self.db,
+            connect_timeout=self.connect_timeout, charset=self.charset)

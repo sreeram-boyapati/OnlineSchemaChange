@@ -24,14 +24,14 @@ import sys
 from core.tests import integration_test_lib
 
 
-def gen_get_conn(arg_user, arg_password, arg_socket, arg_charset='utf8'):
+def gen_get_conn(arg_user, arg_password, arg_host, arg_charset='utf8'):
     def default_get_mysql_connection(
-            user_name=None, user_pass=None, socket=None, dbname='',
+            user_name=None, user_pass=None, host=None, dbname='',
             timeout=60, connect_timeout=10, charset=None):
         connection_config = {
             'user': arg_user,
             'passwd': arg_password,
-            'unix_socket': arg_socket,
+            'host': arg_host,
             'db': dbname,
             'use_unicode': True,
             'connect_timeout': connect_timeout
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     parser.add_argument('--mysql-user', required=True)
     parser.add_argument('--mysql-password', required=True)
     parser.add_argument('--database', required=True)
-    parser.add_argument('--socket', required=True)
+    parser.add_argument('--host', required=True)
     parser.add_argument('--test-name', nargs='?', help='Specify test to run')
     parser.add_argument('-v', action='store_true',
                         help='Print out INFO level log from payload')
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     # what defined in those directories under base_dir
     test_case = integration_test_lib.gen_test_cases(
         args.base_dir, gen_get_conn(
-            args.mysql_user, args.mysql_password, args.socket),
+            args.mysql_user, args.mysql_password, args.host),
         args.test_name, args.database)
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
